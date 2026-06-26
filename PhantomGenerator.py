@@ -12,7 +12,7 @@ import torch
 
 
 class PhantomGenerator:
-    def __init__(self, seed=1029, image_size=128):
+    def __init__(self, seed, image_size):
         self.seed = seed
         self.image_size = image_size
         self._seed_all()

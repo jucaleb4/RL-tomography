@@ -15,11 +15,16 @@ import torch.optim as optim
 import numpy as np
 
 import argparse
+import os
+import time
+import yaml
 
-from Environment_RL import *
+import Environment_RL 
+from logger import BasicLogger
 # import subprocess
 
 # Create an ArgumentParser object
+"""
 parser = argparse.ArgumentParser(description='Experiments parameters in main')
 
 
@@ -42,32 +47,14 @@ parser.add_argument('--LR', type=float, default=1e-4,
 parser.add_argument('--WD', type=float, default=1e-5,
                         help='weight decay')
 
-parser.add_argument('--Note', type=str, default='mix', 
-                        help='name for saving')
-
-
 parser.add_argument('--IMAGE_SIZE', type=int, default=128,
                         help='the size of image')
 
 parser.add_argument('--ACTION_SIZE', type=int, default=180,
                         help='the size of action space')
-
-
-
-args = parser.parse_args()
-
-
-
-
-env = env(args.NUM_ANGLES, args.REWARD_MODE, args.IMAGE_SIZE, args.ACTION_SIZE)
-
+"""
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-note = args.Note
-
-
 
 class ActorCritic(nn.Module):
     def __init__(self, input_dim, hidden_dim, hidden_dim_1, output_dim, n_layers=2):
@@ -145,30 +132,56 @@ class ActorCritic(nn.Module):
         return dist, value
 
   
-def main():
+def main(settings):
+    # setup environment
+    print("Setting up environment")
+    s_time = time.time()
+    env = Environment_RL.env(
+        settings['seed'], 
+        settings['n_images'], 
+        settings['n_angles'], 
+        settings['reward_type'], 
+        settings['image_size'], 
+        settings['action_size']
+    )
+    print("Done... (%.2fs)" % (time.time() - s_time))
+
     # set parameters for network
-    INPUT_DIM = args.IMAGE_SIZE
+    print("Setting up neural network")
+    s_time = time.time()
+    INPUT_DIM = settings['image_size']
     HIDDEN_DIM = 4*INPUT_DIM + 1
 
-    OUTPUT_DIM = args.ACTION_SIZE
-    HIDDEN_DIM_1 = args.ACTION_SIZE
+    OUTPUT_DIM = settings['action_size']
+    HIDDEN_DIM_1 = settings['action_size']
 
     model = ActorCritic(INPUT_DIM, HIDDEN_DIM, HIDDEN_DIM_1, OUTPUT_DIM).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.LR, weight_decay=args.WD)
+    optimizer = optim.Adam(model.parameters(), lr=settings['lr'], weight_decay=settings['wd'])
+    print("Done... (%.2fs)" % (time.time() - s_time))
 
+    # logger
 
+    logger = BasicLogger(
+        fname=os.path.join(settings["log_folder"], "seed=%d.csv" % settings['seed']), 
+        keys=["episode", "time (sec)", "reward", "entropy", "l_1"],
+        dtypes=['d'] + ['f'] * 4
+    )
 
-    for e in range(args.NUM_EPISODES):
+    s_time = time.time()
+    for e in range(settings['n_episodes']):
         # reset the environment and the action vector
         state = env.reset()
-        state_a = np.array([[0]*args.ACTION_SIZE])
- 
-   
+        state_a = np.array([[0]*settings['action_size']])
     
         # track the total rewards
         score = 0
+        dist_to_uni_in_l_1 = 0
         
+        if time.time() - s_time > settings["time_limit"]:
+            print("Breaking early due to time limit")
+            break
   
+        t = 0
         while True:
             # outputs from Actor-Critic model based on the current reconstruction
             dist, value = model(state, state_a)
@@ -180,10 +193,12 @@ def main():
             entropy = dist.entropy().mean()
             angle_dist = dist.probs.detach().cpu().numpy()
             # angle_prob.append(angle_dist)
-            
+            dist_to_uni_in_l_1 = np.sum(np.abs(angle_dist - 1./settings['action_size']))
             
             # outputs from the environment after selecting an angles
             next_state, reward, done, _, c_r, n = env.step(action.item())
+            # print("[%d] rwd=%.4e" % (t, reward))
+            t += 1
         
             # update the action vector
             state_a[0][action] = 1
@@ -192,7 +207,7 @@ def main():
             next_dist, next_value = model(next_state, state_a)
         
             # compute the temperal difference as an approximation of the advantage function
-            advantage = reward + (1-done)* args.GAMMA*next_value - value
+            advantage = reward + (1-done)* settings['gamma']*next_value - value
             
             # compute the different losses with weights
             actor_loss = -(log_prob * advantage.detach())
@@ -213,19 +228,25 @@ def main():
             
             if done:
                 break
-        
-        
     
-        if e % 100 == 0:
-            print("episode", e)
-            print("score", score, "entropy", entropy.item())
-    
-        if e % 1000 == 0:
-            torch.save(model.state_dict(), 'actor_critic_{}_{}'.format(e, note))
-    
-        
-      
+        if e % 20 == 0:
+            print("episode", e, " (out of %d)" % settings['n_episodes'])
+            print("score", score, "entropy", entropy.item(), "l_1", dist_to_uni_in_l_1)
+            e_time = time.time() - s_time
+            logger.log(e, e_time, score, entropy.detach().numpy(), dist_to_uni_in_l_1)
+
+    logger.save(max_size=1_000)
     
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--settings", type=str, required=True)
+    args = parser.parse_args()
+
+    with open(args.settings) as stream:
+        try:
+            settings = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+
+    main(settings)
     
