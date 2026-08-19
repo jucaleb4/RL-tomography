@@ -56,6 +56,7 @@ parser.add_argument('--ACTION_SIZE', type=int, default=180,
 """
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print("device: %s" % device)
 
 class ActorCritic(nn.Module):
     def __init__(self, input_dim, hidden_dim, hidden_dim_1, output_dim, n_layers=2):
@@ -236,6 +237,10 @@ def main(settings):
             print("score", score, "entropy", entropy.item(), "l_1", dist_to_uni_in_l_1)
             e_time = time.time() - s_time
             logger.log(e, e_time, score, entropy.detach().numpy(), dist_to_uni_in_l_1)
+        if e % 1_000 == 0:
+            elapsed_time = time.time() - s_time
+            estimated_time = settings['n_episodes'] * elapsed_time/(e+1)
+            print("Estimated time: %.2fs" % estimated_time)
 
     logger.save(max_size=1_000)
     
