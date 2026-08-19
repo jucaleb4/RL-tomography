@@ -17,6 +17,7 @@ from PhantomGenerator import PhantomGenerator
 
 from skimage.transform import radon, iradon_sart
 
+from utils import ImageType
 
 # def reconstruction_noise(P, proj_angles, proj_size, vol_geom, n_iter_sirt, percentage=0.0):
 def forward_eval(image, theta, percentage=0.0):
@@ -69,11 +70,20 @@ def angle_range(N_a):
 class env():
     
     def __init__(
-        self, seed, n_images, num_angles, reward_type, image_size, action_size
+        self, seed, n_images, num_angles, reward_type, image_size, action_size,
+        image_type = ImageType.MIXED,
     ):
         # Generate your phantoms
         gen = PhantomGenerator(seed=seed, image_size=image_size)
-        self.P_all = gen.generate_mixed(n_samples=n_images)
+        
+        if image_type == ImageType.MIXED:
+            self.P_all = gen.generate_mixed(n_samples=n_images)
+        elif image_type == ImageType.TRIANGLE:
+            self.P_all = gen.generate_triangle(n_samples=n_images)
+        elif image_type == ImageType.TRIANGLE_THIRTY:
+            self.P_all = gen.generate_triangle(n_samples=n_images, max_angle=30)
+        else:
+            raise Exception("Unknown ImageType %s" % image_type)
 
         # Select phantom index
         self.n = np.random.randint(0,len(self.P_all))

@@ -21,6 +21,7 @@ import yaml
 
 import Environment_RL 
 from logger import BasicLogger
+from utils import ImageType
 # import subprocess
 
 # Create an ArgumentParser object
@@ -142,7 +143,8 @@ def main(settings):
         settings['n_angles'], 
         settings['reward_type'], 
         settings['image_size'], 
-        settings['action_size']
+        settings['action_size'],
+        ImageType(settings['image_type']),
     )
     print("Done... (%.2fs)" % (time.time() - s_time))
 

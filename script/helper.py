@@ -1,4 +1,5 @@
 import math
+from Environment_RL import ImageType
 
 def parse_sub_runs(sub_runs, total_runs):
     start_run_id, end_run_id = 0, total_runs
@@ -29,6 +30,7 @@ def get_parameter_settings(seed, print_info, about):
         ("delta", 1e-2),
         ("image_size", 128), # TODO: remove this?
         ("action_size", 180), # TODO: remove this?
+        ("image_type", ImageType.MIXED),
     ])
 
     od_info = [

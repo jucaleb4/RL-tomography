@@ -62,9 +62,9 @@ class PhantomGenerator:
             data.append(ph)
         return data
 
-    def generate_triangle(self, n_samples=3000):
+    def generate_triangle(self, n_samples=3000, max_angle=180):
         v_a = np.random.uniform(-10, 2.5, n_samples)
-        rotation_range = np.linspace(0, 180, 36, False)
+        rotation_range = np.linspace(0, max_angle, 36, False)
         rotation_label = np.random.randint(0, 36, n_samples)
 
         def mask(a_range):
