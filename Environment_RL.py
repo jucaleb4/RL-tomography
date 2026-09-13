@@ -50,7 +50,6 @@ def forward_eval(image, theta, percentage=0.0):
     # gauss1 = gauss.reshape(len(proj_angles), proj_size)
     
     sinogram_n = sinogram + n
-    
     """ astra code <- not needed since we will not do reconstruction
     rec_sirt = W.reconstruct('SIRT_CUDA', sinogram_n, iterations=n_iter_sirt, extraOptions={'MinConstraint':0.0,'MaxConstraint':1.0})
     """
@@ -82,6 +81,8 @@ class env():
             self.P_all = gen.generate_triangle(n_samples=n_images)
         elif image_type == ImageType.TRIANGLE_THIRTY:
             self.P_all = gen.generate_triangle(n_samples=n_images, max_angle=30)
+        elif image_type == ImageType.TRIANGLE_FIXED:
+            self.P_all = gen.generate_triangle(n_samples=n_images, max_angle=0)
         else:
             raise Exception("Unknown ImageType %s" % image_type)
 

@@ -1,5 +1,12 @@
 # SeqAngleRL
 
+## Pushing
+Since this is a fork, you will need to run
+```
+git push origin
+```
+
+## About
 This repository contains the code for the Sequential Experimental Design for X-ray CT using Deep Reinforcement Learning (SeqAngleRL) project. The work was published on [IEEE Transactions on Computational Imaging](https://ieeexplore.ieee.org/document/10572344/authors#authors). A PDF version is available [here](https://ir.cwi.nl/pub/34320/34320.pdf).
 
 ## Project Overview
