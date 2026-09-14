@@ -1,5 +1,5 @@
 import math
-from Environment_RL import ImageType
+from Environment_RL import ImageType, RewardType
 
 def parse_sub_runs(sub_runs, total_runs):
     start_run_id, end_run_id = 0, total_runs
@@ -23,14 +23,16 @@ def get_parameter_settings(seed, print_info, about):
 		("time_limit", 3600),
         ("n_images", 3000), # number of sampled images
         ("n_angles", 6), # number of angles to save
-        ("reward_type", "forward"), # forward or pnsr
         ("gamma", 0.99),
         ("lr", 1e-4),
         ("wd", 1e-5), # weight decay
         ("delta", 1e-2),
         ("image_size", 128), # TODO: remove this?
         ("action_size", 180), # TODO: remove this?
-        ("image_type", ImageType.MIXED),
+        ("image_type", ImageType.MIXED.value),
+        ("reward_type", RewardType.FWD_INCREMENTAL.value),
+        ("critic_loss_const", 0.5),
+        ("entropy_loss_const", 0.0),
     ])
 
     od_info = [
@@ -39,6 +41,10 @@ def get_parameter_settings(seed, print_info, about):
         ("n_seeds", "num seeds"), 
         ("n_iters", "num SPMD iters"),
         ("max_runtime_in_sec", "max runtime before SPMD early terminates (only for SPMD)"),
+        ("image_type", "Type of images to scan in tomography"),
+        ("reward_type", "Type of reward (preferred FWD rewards)"),
+        ("critic_loss_const", "Loss function contribution from critic"),
+        ("entropy_loss_const", "Loss function contribution from entropy (OG default: -0.01)"),
     ]
 
     if print_info:

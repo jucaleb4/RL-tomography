@@ -22,9 +22,9 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
 
     od["seed"] = seed
     od["time_limit"] = time_limit
-    od["reward_type"] = "forward"
 
     image_type_arr = [ImageType.TRIANGLE, ImageType.TRIANGLE_THIRTY]
+    entropy_coeff_arr = [0.0, -0.01]
 
     log_folder_base = os.path.join("logs", DATE, "exp_%s" % EXP_ID)
     setting_folder_base = os.path.join("settings", DATE, "exp_%s" % EXP_ID)
@@ -37,22 +37,23 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         print("Saving setting files to %s" % setting_folder_base)
 
     # https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-    exp_metadata = ["Exp id", "image_type"]
-    row_format ="{:>10}|{:>15}"
+    exp_metadata = ["Exp id", "image_type", "ent_coeff"]
+    row_format ="{:>10}|{:>15}|{:>10}"
     if not skip_save:
         print("")
         print(row_format.format(*exp_metadata))
-        print("-" * (25+len(exp_metadata)-1))
+        print("-" * (35+len(exp_metadata)-1))
 
     ct = 0
-    for (image_type,) in itertools.product(image_type_arr):
+    for (image_type, entropy_coeff) in itertools.product(image_type_arr, entropy_coeff_arr):
         od["image_type"] = image_type.value
+        od["entropy_loss_const"] = entropy_coeff
 
         setting_fname = os.path.join(setting_folder_base,  "run_%s.yaml" % ct)
         od["log_folder"] = os.path.join(log_folder_base, "run_%s" % ct)
 
         if not skip_save:
-            print(row_format.format(ct, image_type.name))
+            print(row_format.format(ct, image_type.name, od["entropy_loss_const"]))
 
             if not(os.path.exists(od["log_folder"])):
                 os.makedirs(od["log_folder"])

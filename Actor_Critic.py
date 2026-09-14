@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3 # -*- coding: utf-8 -*-
 """
 Created on Thu Jun 29 16:07:23 2023
 
@@ -21,7 +20,7 @@ import yaml
 
 import Environment_RL 
 from logger import BasicLogger
-from utils import ImageType
+from utils import ImageType, RewardType
 # import subprocess
 
 # Create an ArgumentParser object
@@ -142,11 +141,12 @@ def main(settings):
         settings['seed'], 
         settings['n_images'], 
         settings['n_angles'], 
-        settings['reward_type'], 
         settings['image_size'], 
         settings['action_size'],
         ImageType(settings['image_type']),
+        RewardType(settings['reward_type']),
     )
+
     print("Done... (%.2fs)" % (time.time() - s_time))
 
     # set parameters for network
@@ -166,7 +166,7 @@ def main(settings):
 
     logger = BasicLogger(
         fname=os.path.join(settings["log_folder"], "seed=%d.csv" % settings['seed']), 
-        keys=["episode", "time (sec)", "reward", "entropy", "l_1"],
+        keys=["episode", "time (sec)", "episodic reward", "entropy", "l_1"],
         dtypes=['d'] + ['f'] * 4
     )
 
@@ -177,7 +177,7 @@ def main(settings):
         state_a = np.array([[0]*settings['action_size']])
     
         # track the total rewards
-        score = 0
+        cum_reward = 0
         dist_to_uni_in_l_1 = 0
         
         if time.time() - s_time > settings["time_limit"]:
@@ -216,27 +216,25 @@ def main(settings):
             actor_loss = -(log_prob * advantage.detach())
             critic_loss = advantage.pow(2).mean()
         
-            loss = actor_loss + 0.5 * critic_loss - 0.01 * entropy
+            loss = actor_loss + settings['critic_loss_const'] * critic_loss + settings['entropy_loss_const'] * entropy
     
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
        
         
-        
-            score += reward
-        
+            cum_reward += reward
             state = next_state
         
             
             if done:
                 break
     
+        e_time = time.time() - s_time
+        logger.log(e, e_time, cum_reward, entropy.detach().numpy(), dist_to_uni_in_l_1)
         if e % 20 == 0:
             print("episode", e, " (out of %d)" % settings['n_episodes'])
-            print("score", score, "entropy", entropy.item(), "l_1", dist_to_uni_in_l_1)
-            e_time = time.time() - s_time
-            logger.log(e, e_time, score, entropy.detach().numpy(), dist_to_uni_in_l_1)
+            print("cum_reward", cum_reward, "entropy", entropy.item(), "l_1", dist_to_uni_in_l_1)
         if e % 1_000 == 0:
             elapsed_time = time.time() - s_time
             estimated_time = settings['n_episodes'] * elapsed_time/(e+1)
@@ -253,7 +251,8 @@ if __name__ == '__main__':
         try:
             settings = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
-            print(exc)
+            print("!!! Error message: %s !!!" % exc)
+            exit(0)
 
     main(settings)
     

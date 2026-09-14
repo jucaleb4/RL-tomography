@@ -17,7 +17,7 @@ from PhantomGenerator import PhantomGenerator
 
 from skimage.transform import radon, iradon_sart
 
-from utils import ImageType
+from utils import ImageType, RewardType
 
 # def reconstruction_noise(P, proj_angles, proj_size, vol_geom, n_iter_sirt, percentage=0.0):
 def forward_eval(image, theta, percentage=0.0):
@@ -69,8 +69,8 @@ def angle_range(N_a):
 class env():
     
     def __init__(
-        self, seed, n_images, num_angles, reward_type, image_size, action_size,
-        image_type = ImageType.MIXED,
+        self, seed, n_images, num_angles, image_size, action_size,
+        image_type = ImageType.MIXED, reward_type = RewardType.FWD_E2E,
     ):
         # Generate your phantoms
         gen = PhantomGenerator(seed=seed, image_size=image_size)
@@ -121,29 +121,8 @@ class env():
         sinogram_n = forward_eval(self.P_all[self.n].astype('float'), theta=self.angles_seq)
         self.state = iradon_sart(sinogram_n, theta=self.angles_seq) # re-constructed image
        
-        # Get reward for new state
-        """ ASTRA
-        if self.reward_type == "increment":
-            self.reward  = self._get_reward_increm()
-        elif self.reward_type == "endtoend":
-            self.reward = self._get_reward_end()
-        """
-        bootstrap_image = radon(self.state, theta=self.angles_seq)
-        reconstruction_error = la.norm(sinogram_n - bootstrap_image, ord=2)
+        self.reward = self._get_reward_end(sinogram_n)
 
-        if self.reward_type == "PNSR":
-            self.reward = self._get_reward_end()
-        elif self.reward_type == "forward":
-            self.reward = -reconstruction_error/la.norm(sinogram_n, ord=2)
-        else:
-            if self.first_step:
-                print("reward_type %s unknown, defaulting to 'forward" % self.reward_type)
-            self.reward = -reconstruction_error/la.norm(sinogram_n, ord=2)
-        self.first_step = False
-
-        # Calculate the total rewards
-        self.total_reward += self.reward
-            
         # The stop criteria depends on the number of angles; if the criteria is reached, go another round 
         if self.a_start > self.num_angles:
             # self.n = np.random.randint(0,4)
@@ -161,7 +140,6 @@ class env():
         
         self.curr_iteration = 0
               
-        self.total_reward = 0.0
         self.angles_seq = []
         
         # initialization for action
@@ -191,13 +169,29 @@ class env():
 
         return reward
 
-    def _get_reward_end(self,):
-        # calculate the psnr value for the current reconstruction
-        self.current_reward = psnr(self.P_all[self.n], self.state)   
-        # end-to-end reward setting
-        if self.a_start > self.num_angles:
-            reward = self.current_reward
+    def _get_reward_end(self, sinogram_n):
+        reward = 0
+
+        if self.reward_type in [RewardType.PNSR_E2E, RewardType.PNSR_INCREMENTAL]:
+            current_reward = psnr(self.P_all[self.n], self.state)   
+            if (self.reward_type == RewardType.PNSR_E2E) and (self.a_start > self.num_angles):
+                reward = current_reward
+            # if PNSR_E2E and not reached num_angles, reward is sparse at 0
+            elif self.reward_type == RewardType.PNSR_INCREMENTAL:
+                reward = current_reward - self.previous_reward
+                self.previous_reward = current_reward
+        elif self.reward_type in [RewardType.FWD_E2E, RewardType.FWD_INCREMENTAL]:
+            bootstrap_image = radon(self.state, theta=self.angles_seq)
+            reconstruction_error = la.norm(sinogram_n - bootstrap_image, ord='fro')
+            current_reward = -reconstruction_error/la.norm(sinogram_n, ord='fro')
+
+            if (self.reward_type == RewardType.FWD_E2E) and (self.a_start > self.num_angles):
+                reward = current_reward
+            # if FWD_E2E and not reached num_angles, reward is sparse at 0
+            elif self.reward_type == RewardType.FWD_INCREMENTAL:
+                reward = current_reward - self.previous_reward
+                self.previous_reward = current_reward
         else:
-            reward = 0
-        
+            raise Exception("Unknown reward_type %s" % self.reward_type)
+
         return reward

@@ -11,6 +11,8 @@ sys.path.insert(0, parent_dir)
 
 from script.helper import get_parameter_settings, parse_sub_runs
 
+from utils import ImageType, RewardType
+
 DATE =  os.path.dirname(__file__).split("/")[-1] # "2025_12_24"
 EXP_ID = int(re.search(r'\d+', os.path.splitext(os.path.basename(__file__))[0]).group()) # 0
 ABOUT = "Basic run of RL for Seq DOE"
@@ -22,7 +24,8 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od["time_limit"] = time_limit
 
     # tuning parameters
-    reward_type_arr = ["forward", "PNSR"]
+    reward_type_arr = [RewardType.PNSR_INCREMENTAL, RewardType.FWD_INCREMENTAL]
+    entropy_coeff_arr = [0.0, -0.01]
 
     log_folder_base = os.path.join("logs", DATE, "exp_%s" % EXP_ID)
     setting_folder_base = os.path.join("settings", DATE, "exp_%s" % EXP_ID)
@@ -35,22 +38,23 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         print("Saving setting files to %s" % setting_folder_base)
 
     # https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-    exp_metadata = ["Exp id", "reward_type"]
-    row_format ="{:>10}|{:>15}"
+    exp_metadata = ["Exp id", "reward_type", "ent_coeff"]
+    row_format ="{:>10}|{:>20}|{:>10}"
     if not skip_save:
         print("")
         print(row_format.format(*exp_metadata))
-        print("-" * (25+len(exp_metadata)-1))
+        print("-" * (40+len(exp_metadata)-1))
 
     ct = 0
-    for (reward_type,) in itertools.product(reward_type_arr):
-        od["reward_type"] = reward_type
+    for (reward_type, entropy_coeff) in itertools.product(reward_type_arr, entropy_coeff_arr):
+        od["reward_type"] = reward_type.value
+        od["entropy_loss_const"] = entropy_coeff
 
         setting_fname = os.path.join(setting_folder_base,  "run_%s.yaml" % ct)
         od["log_folder"] = os.path.join(log_folder_base, "run_%s" % ct)
 
         if not skip_save:
-            print(row_format.format(ct, reward_type))
+            print(row_format.format(ct, reward_type.name, od["entropy_loss_const"]))
 
             if not(os.path.exists(od["log_folder"])):
                 os.makedirs(od["log_folder"])
