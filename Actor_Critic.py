@@ -168,8 +168,17 @@ def main(settings):
         fname=os.path.join(settings["log_folder"], "seed=%d.csv" % settings['seed']), 
         keys=["episode", "time (sec)", "episodic reward", "entropy", "l_1"],
         dtypes=['d'] + ['f'] * 4
-    )
+    ) 
+    all_angles = env.angles
+    angle_logger = BasicLogger(
+        fname=os.path.join(settings["log_folder"], "final_angle_seed=%d.csv" % settings['seed']), 
+        keys=["%d" % i for i in range(len(all_angles))],
+        dtypes=['f'] * len(all_angles)
+    ) 
+    angle_logger.log(*all_angles)
 
+    # for saving final angle distribution
+    angle_dist = None
     s_time = time.time()
     for e in range(settings['n_episodes']):
         # reset the environment and the action vector
@@ -241,6 +250,9 @@ def main(settings):
             print("Estimated time: %.2fs" % estimated_time)
 
     logger.save(max_size=1_000)
+
+    angle_logger.log(*np.squeeze(angle_dist))
+    angle_logger.save()
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
