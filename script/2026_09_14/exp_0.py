@@ -15,17 +15,18 @@ from utils import ImageType, RewardType
 
 DATE =  os.path.dirname(__file__).split("/")[-1] # "2025_12_24"
 EXP_ID = int(re.search(r'\d+', os.path.splitext(os.path.basename(__file__))[0]).group()) # 0
-ABOUT = "RL for Seq DOE with varying scan amounts"
+ABOUT = "RL for Seq DOE with varying corruption"
 
 def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od = get_parameter_settings(seed, False, ABOUT)
 
     od["seed"] = seed
     od["time_limit"] = time_limit
+    od["n_angles"] = 24
 
-    image_type_arr = [ImageType.TRIANGLE, ImageType.TRIANGLE_FIXED]
+    image_type_arr = [ImageType.MIXED, ImageType.TRIANGLE]
     reward_type_arr = [RewardType.FWD_E2E, RewardType.FWD_INCREMENTAL]
-    n_angles_arr = [6,24,96]
+    corruption_arr = [0.0, 0.01, 0.15]
 
     log_folder_base = os.path.join("logs", DATE, "exp_%s" % EXP_ID)
     setting_folder_base = os.path.join("settings", DATE, "exp_%s" % EXP_ID)
@@ -38,7 +39,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         print("Saving setting files to %s" % setting_folder_base)
 
     # https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-    exp_metadata = ["Exp id", "image_type", "reward_type", "n_angles"]
+    exp_metadata = ["Exp id", "image_type", "reward_type", "corrupt"]
     row_format ="{:>10}|{:>15}|{:>15}|{:>10}"
     if not skip_save:
         print("")
@@ -46,16 +47,16 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         print("-" * (50+len(exp_metadata)-1))
 
     ct = 0
-    for (image_type, reward_type, n_angles) in itertools.product(image_type_arr, reward_type_arr, n_angles_arr):
+    for (image_type, reward_type, corruption) in itertools.product(image_type_arr, reward_type_arr, corruption_arr):
         od["image_type"] = image_type.value
         od["reward_type"] = reward_type.value
-        od["n_angles"] = n_angles
+        od["corruption_percentage"] = corruption
 
         setting_fname = os.path.join(setting_folder_base,  "run_%s.yaml" % ct)
         od["log_folder"] = os.path.join(log_folder_base, "run_%s" % ct)
 
         if not skip_save:
-            print(row_format.format(ct, image_type.name, reward_type.name, od["n_angles"]))
+            print(row_format.format(ct, image_type.name, reward_type.name, od["corruption_percentage"]))
 
             if not(os.path.exists(od["log_folder"])):
                 os.makedirs(od["log_folder"])

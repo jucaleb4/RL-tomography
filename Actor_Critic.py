@@ -143,6 +143,7 @@ def main(settings):
         settings['n_angles'], 
         settings['image_size'], 
         settings['action_size'],
+        settings['corruption_percentage'],
         ImageType(settings['image_type']),
         RewardType(settings['reward_type']),
     )

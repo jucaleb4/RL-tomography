@@ -70,6 +70,7 @@ class env():
     
     def __init__(
         self, seed, n_images, num_angles, image_size, action_size,
+        corruption_percentage,
         image_type = ImageType.MIXED, reward_type = RewardType.FWD_E2E,
     ):
         # Generate your phantoms
@@ -105,7 +106,7 @@ class env():
         self.n_iter_sirt = 150
         self.init_start = 0
         self.first_step = True
-
+        self.corruption_percentage = max(0, corruption_percentage)
  
     def step(self, action):
         
@@ -118,7 +119,11 @@ class env():
         self.angles_seq.append(self.angle_action)
         
         # Use all selected angles to do reconstruction using SIRT as a belief state
-        sinogram_n = forward_eval(self.P_all[self.n].astype('float'), theta=self.angles_seq)
+        sinogram_n = forward_eval(
+            self.P_all[self.n].astype('float'), 
+            theta=self.angles_seq,
+            percentage=self.corruption_percentage,
+        )
         self.state = iradon_sart(sinogram_n, theta=self.angles_seq) # re-constructed image
        
         self.reward = self._get_reward_end(sinogram_n)
