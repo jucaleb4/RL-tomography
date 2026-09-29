@@ -171,12 +171,17 @@ def main(settings):
         dtypes=['d'] + ['f'] * 4
     ) 
     all_angles = env.angles
-    angle_logger = BasicLogger(
+    angle_dist_logger = BasicLogger(
         fname=os.path.join(settings["log_folder"], "final_angle_seed=%d.csv" % settings['seed']), 
         keys=["%d" % i for i in range(len(all_angles))],
         dtypes=['f'] * len(all_angles)
     ) 
-    angle_logger.log(*all_angles)
+    angle_dist_logger.log(*all_angles)
+    image_and_angle_logger = BasicLogger(
+        fname=os.path.join(settings["log_folder"], "img_angle_seed=%d.csv" % settings['seed']), 
+        keys=["image_id", "angle"],
+        dtypes=['d', 'f'],
+    ) 
 
     # for saving final angle distribution
     angle_dist = None
@@ -210,6 +215,10 @@ def main(settings):
             
             # outputs from the environment after selecting an angles
             next_state, reward, done, _, c_r, n = env.step(action.item())
+
+            # log image_d and angle
+            image_and_angle_logger.log(n, all_angles[action.item()])
+
             # print("[%d] rwd=%.4e" % (t, reward))
             t += 1
         
@@ -252,8 +261,10 @@ def main(settings):
 
     logger.save(max_size=1_000)
 
-    angle_logger.log(*np.squeeze(angle_dist))
-    angle_logger.save()
+    angle_dist_logger.log(*np.squeeze(angle_dist))
+    angle_dist_logger.save()
+
+    image_and_angle_logger.save()
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

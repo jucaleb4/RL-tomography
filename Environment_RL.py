@@ -84,6 +84,8 @@ class env():
             self.P_all = gen.generate_triangle(n_samples=n_images, max_angle=30)
         elif image_type == ImageType.TRIANGLE_FIXED:
             self.P_all = gen.generate_triangle(n_samples=n_images, max_angle=0)
+        elif image_type == ImageType.LINE:
+            self.P_all = gen.generate_line(n_samples=n_images)
         else:
             raise Exception("Unknown ImageType %s" % image_type)
 
@@ -126,7 +128,7 @@ class env():
         )
         self.state = iradon_sart(sinogram_n, theta=self.angles_seq) # re-constructed image
        
-        self.reward = self._get_reward_end(sinogram_n)
+        self.reward = self._get_reward(sinogram_n)
 
         # The stop criteria depends on the number of angles; if the criteria is reached, go another round 
         if self.a_start > self.num_angles:
@@ -161,20 +163,7 @@ class env():
         
         return self.state
     
-    def _get_reward_increm(self,):
-        # calculate the psnr value for the current reconstruction
-        self.current_reward = psnr(self.P_all[self.n], self.state)
-        
-        # incremental reward setting
-        reward = self.current_reward - self.previous_reward
-        self.previous_reward = self.current_reward
-        
-     
-        self.previous_action=self.angles_seq[-1]
-
-        return reward
-
-    def _get_reward_end(self, sinogram_n):
+    def _get_reward(self, sinogram_n):
         reward = 0
 
         if self.reward_type in [RewardType.PNSR_E2E, RewardType.PNSR_INCREMENTAL]:
