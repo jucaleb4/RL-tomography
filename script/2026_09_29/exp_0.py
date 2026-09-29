@@ -25,6 +25,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od["n_angles"] = 24
 
     image_type_arr = [ImageType.LINE]
+    angle_as_deg_arr = [False, True]
 
     log_folder_base = os.path.join("logs", DATE, "exp_%s" % EXP_ID)
     setting_folder_base = os.path.join("settings", DATE, "exp_%s" % EXP_ID)
@@ -37,22 +38,23 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         print("Saving setting files to %s" % setting_folder_base)
 
     # https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-    exp_metadata = ["Exp id", "image_type"]
-    row_format ="{:>10}|{:>15}"
+    exp_metadata = ["Exp id", "image_type", "ang_in_deg"]
+    row_format ="{:>10}|{:>15}|{:>10}"
     if not skip_save:
         print("")
         print(row_format.format(*exp_metadata))
-        print("-" * (25+len(exp_metadata)-1))
+        print("-" * (35+len(exp_metadata)-1))
 
     ct = 0
-    for (image_type,) in itertools.product(image_type_arr):
+    for (image_type, angle_as_deg) in itertools.product(image_type_arr, angle_as_deg_arr):
         od["image_type"] = image_type.value
+        od["angle_in_degrees"] = angle_as_deg
 
         setting_fname = os.path.join(setting_folder_base,  "run_%s.yaml" % ct)
         od["log_folder"] = os.path.join(log_folder_base, "run_%s" % ct)
 
         if not skip_save:
-            print(row_format.format(ct, image_type.name))
+            print(row_format.format(ct, image_type.name, od["angle_in_degrees"]))
 
             if not(os.path.exists(od["log_folder"])):
                 os.makedirs(od["log_folder"])

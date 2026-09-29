@@ -34,6 +34,7 @@ def get_parameter_settings(seed, print_info, about):
         ("critic_loss_const", 0.5),
         ("entropy_loss_const", 0.0),
         ("corruption_percentage", 0.0),
+        ("angle_in_degrees", False),
     ])
 
     od_info = [
@@ -47,6 +48,7 @@ def get_parameter_settings(seed, print_info, about):
         ("critic_loss_const", "Loss function contribution from critic"),
         ("entropy_loss_const", "Loss function contribution from entropy (OG default: -0.01)"),
         ("corruption_percentage", "Corruption in the image"),
+        ("angle_in_degrees", "Generate angles in degrees vs. radians (default: False)"),
     ]
 
     if print_info:

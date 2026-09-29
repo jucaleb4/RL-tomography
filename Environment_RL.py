@@ -72,6 +72,7 @@ class env():
         self, seed, n_images, num_angles, image_size, action_size,
         corruption_percentage,
         image_type = ImageType.MIXED, reward_type = RewardType.FWD_E2E,
+        angle_in_degrees=False,
     ):
         # Generate your phantoms
         gen = PhantomGenerator(seed=seed, image_size=image_size)
@@ -105,6 +106,8 @@ class env():
         self.proj_size = int(1.5*self.image_size)
         self.vol_geom = None # astra.create_vol_geom(self.image_size, self.image_size)
         self.angles = angle_range(self.action_size)
+        if angle_in_degrees:
+            self.angles = np.rad2deg(self.angles)
         self.n_iter_sirt = 150
         self.init_start = 0
         self.first_step = True

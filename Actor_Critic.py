@@ -146,6 +146,7 @@ def main(settings):
         settings['corruption_percentage'],
         ImageType(settings['image_type']),
         RewardType(settings['reward_type']),
+        settings["angle_in_degrees"], 
     )
 
     print("Done... (%.2fs)" % (time.time() - s_time))
