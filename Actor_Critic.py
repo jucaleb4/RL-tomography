@@ -23,8 +23,6 @@ from logger import BasicLogger
 from utils import ImageType, RewardType
 # import subprocess
 
-import matplotlib.pyplot as plt
-
 # Create an ArgumentParser object
 """
 parser = argparse.ArgumentParser(description='Experiments parameters in main')
@@ -357,9 +355,10 @@ def fixed_image_scan(env, settings):
             cum_reward += reward
 
             if done:
-                print("Cum reward: %.4e (n=%d)" % (cum_reward, n))
-                plt.imshow(next_state)
-                plt.show()
+                # print("Cum reward: %.4e (n=%d)" % (cum_reward, n))
+                # import matplotlib.pyplot as plt
+                # plt.imshow(next_state)
+                # plt.show()
                 break
 
         e_time = time.time() - s_time
