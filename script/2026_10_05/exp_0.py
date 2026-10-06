@@ -24,14 +24,14 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od["n_episodes"] = 1_000
     od["time_limit"] = time_limit
     od["n_angles"] = 24
-    od["image_id"] = 2587
+    od["angle_in_degrees"] = True
 
     image_type_arr = [ImageType.LINE]
-    angle_as_deg_and_uniform_and_fixed_arr = [
-        (False, False, False), 
-        (True, False, False), 
-        (True, True, False),
-        (True, False, True),
+    reward_type_arr = [
+        RewardType.FWD_RND_1,
+        RewardType.FWD_RND_10,
+        RewardType.FWD_RND_COMPLETE_10,
+        RewardType.FWD_RND_COMPLETE_FULL,
     ]
 
     log_folder_base = os.path.join("logs", DATE, "exp_%s" % EXP_ID)
@@ -45,21 +45,19 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         print("Saving setting files to %s" % setting_folder_base)
 
     # https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-    exp_metadata = ["Exp id", "image_type", "ang_in_deg", "uni", "fixed"]
-    row_format ="{:>10}|{:>15}|{:>10}|{:>10}|{:>10}"
+    exp_metadata = ["Exp id", "image_type", "reward_type"]
+    row_format ="{:>10}|{:>15}|{:>25}"
     if not skip_save:
         print("")
         print(row_format.format(*exp_metadata))
-        print("-" * (55+len(exp_metadata)-1))
+        print("-" * (50+len(exp_metadata)-1))
 
     ct = 0
-    for (image_type, (angle_as_deg, uniform, fixed_image)) in itertools.product(
-            image_type_arr, angle_as_deg_and_uniform_and_fixed_arr,
+    for (image_type, reward_type) in itertools.product(
+            image_type_arr, reward_type_arr,
     ):
         od["image_type"] = image_type.value
-        od["angle_in_degrees"] = angle_as_deg
-        od["uniform_sampling"] = uniform
-        od["fixed_image"] = fixed_image
+        od["reward_type"] = reward_type.value
 
         setting_fname = os.path.join(setting_folder_base,  "run_%s.yaml" % ct)
         od["log_folder"] = os.path.join(log_folder_base, "run_%s" % ct)
@@ -68,9 +66,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
             print(row_format.format(
                 ct, 
                 image_type.name, 
-                od["angle_in_degrees"], 
-                od["uniform_sampling"],
-                od["fixed_image"],
+                reward_type.name,
             ))
 
             if not(os.path.exists(od["log_folder"])):

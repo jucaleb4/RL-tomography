@@ -35,6 +35,9 @@ def get_parameter_settings(seed, print_info, about):
         ("entropy_loss_const", 0.0),
         ("corruption_percentage", 0.0),
         ("angle_in_degrees", False),
+        ("uniform_sampling", False),
+        ("fixed_image", False),
+        ("image_id", 0),
     ])
 
     od_info = [
@@ -49,6 +52,9 @@ def get_parameter_settings(seed, print_info, about):
         ("entropy_loss_const", "Loss function contribution from entropy (OG default: -0.01)"),
         ("corruption_percentage", "Corruption in the image"),
         ("angle_in_degrees", "Generate angles in degrees vs. radians (default: False)"),
+        ("uniform_sampling", "Select angles uniformally randomly (default:False)"),
+        ("fixed_image", "Use same image for scanning (default:False)"),
+        ("image_id", "Image to use for fixed_image scan"),
     ]
 
     if print_info:

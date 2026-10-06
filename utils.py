@@ -12,3 +12,7 @@ class RewardType(Enum):
     PNSR_INCREMENTAL = 1
     FWD_E2E = 2
     FWD_INCREMENTAL = 3
+    FWD_RND_1 = 4
+    FWD_RND_10 = 5
+    FWD_RND_COMPLETE_10 = 6
+    FWD_RND_COMPLETE_FULL = 7

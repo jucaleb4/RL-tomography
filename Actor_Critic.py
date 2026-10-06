@@ -23,6 +23,8 @@ from logger import BasicLogger
 from utils import ImageType, RewardType
 # import subprocess
 
+import matplotlib.pyplot as plt
+
 # Create an ArgumentParser object
 """
 parser = argparse.ArgumentParser(description='Experiments parameters in main')
@@ -151,21 +153,14 @@ def main(settings):
 
     print("Done... (%.2fs)" % (time.time() - s_time))
 
-    # set parameters for network
-    print("Setting up neural network")
-    s_time = time.time()
-    INPUT_DIM = settings['image_size']
-    HIDDEN_DIM = 4*INPUT_DIM + 1
+    if settings['uniform_sampling']:
+        uniform_sampling(env, settings)
+    elif settings['fixed_image']:
+        fixed_image_scan(env, settings)
+    else:
+        actor_critic(env, settings)
 
-    OUTPUT_DIM = settings['action_size']
-    HIDDEN_DIM_1 = settings['action_size']
-
-    model = ActorCritic(INPUT_DIM, HIDDEN_DIM, HIDDEN_DIM_1, OUTPUT_DIM).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=settings['lr'], weight_decay=settings['wd'])
-    print("Done... (%.2fs)" % (time.time() - s_time))
-
-    # logger
-
+def get_loggers(env, settings):
     logger = BasicLogger(
         fname=os.path.join(settings["log_folder"], "seed=%d.csv" % settings['seed']), 
         keys=["episode", "time (sec)", "episodic reward", "entropy", "l_1"],
@@ -183,6 +178,24 @@ def main(settings):
         keys=["image_id", "angle"],
         dtypes=['d', 'f'],
     ) 
+
+    return logger, angle_dist_logger, image_and_angle_logger
+
+def actor_critic(env, settings):
+    logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
+
+    # set parameters for network
+    print("Setting up neural network")
+    s_time = time.time()
+    INPUT_DIM = settings['image_size']
+    HIDDEN_DIM = 4*INPUT_DIM + 1
+
+    OUTPUT_DIM = settings['action_size']
+    HIDDEN_DIM_1 = settings['action_size']
+
+    model = ActorCritic(INPUT_DIM, HIDDEN_DIM, HIDDEN_DIM_1, OUTPUT_DIM).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=settings['lr'], weight_decay=settings['wd'])
+    print("Done... (%.2fs)" % (time.time() - s_time))
 
     # for saving final angle distribution
     angle_dist = None
@@ -218,7 +231,7 @@ def main(settings):
             next_state, reward, done, _, c_r, n = env.step(action.item())
 
             # log image_d and angle
-            image_and_angle_logger.log(n, all_angles[action.item()])
+            image_and_angle_logger.log(n, env.angles[action.item()])
 
             # print("[%d] rwd=%.4e" % (t, reward))
             t += 1
@@ -260,13 +273,109 @@ def main(settings):
             estimated_time = settings['n_episodes'] * elapsed_time/(e+1)
             print("Estimated time: %.2fs" % estimated_time)
 
-    logger.save(max_size=1_000)
-
+    logger.save()
     angle_dist_logger.log(*np.squeeze(angle_dist))
     angle_dist_logger.save()
 
     image_and_angle_logger.save()
+
+def uniform_sampling(env, settings):
+    logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
+
+    tot_n_angles = len(env.angles)
+    dist_to_uni_in_l_1 = 0
+    uniform_entropy = np.log(tot_n_angles)
+    rng = np.random.default_rng(settings['seed'])
+
+    s_time = time.time()
+    for e in range(settings['n_episodes']):
+        # reset the environment and the action vector
+        state = env.reset()
     
+        # track the total rewards
+        cum_reward = 0
+        
+        if time.time() - s_time > settings["time_limit"]:
+            print("Breaking early due to time limit")
+            break
+
+        while True:
+            # random sampling
+            a_t = rng.choice(tot_n_angles)
+            next_state, reward, done, _, c_r, n = env.step(a_t)
+            image_and_angle_logger.log(n, env.angles[a_t])
+
+            cum_reward += reward
+
+            if done:
+                break
+
+        e_time = time.time() - s_time
+        logger.log(e, e_time, cum_reward, uniform_entropy, dist_to_uni_in_l_1)
+
+        if e % 20 == 0:
+            print("episode", e, " (out of %d)" % settings['n_episodes'])
+            print("cum_reward", cum_reward)
+        if e % 1_000 == 0:
+            elapsed_time = time.time() - s_time
+            estimated_time = settings['n_episodes'] * elapsed_time/(e+1)
+            print("Estimated time: %.2fs" % estimated_time)
+
+    logger.save()
+    image_and_angle_logger.save()
+
+def fixed_image_scan(env, settings):
+    logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
+    image_id = settings["image_id"]
+
+    tot_n_angles = len(env.angles)
+    dist_to_uni_in_l_1 = 0
+    uniform_entropy = np.log(tot_n_angles)
+    rng = np.random.default_rng(settings['seed'])
+
+    s_time = time.time()
+    for e in range(settings['n_episodes']):
+        # reset the environment and the action vector
+        state = env.reset()
+        # force the image
+        env.n = image_id
+    
+        # track the total rewards
+        cum_reward = 0
+        
+        if time.time() - s_time > settings["time_limit"]:
+            print("Breaking early due to time limit")
+            break
+
+        while True:
+            # random sampling
+            a_t = rng.choice(tot_n_angles)
+            a_t = 6
+            next_state, reward, done, _, c_r, n = env.step(a_t)
+            image_and_angle_logger.log(n, env.angles[a_t])
+
+            cum_reward += reward
+
+            if done:
+                print("Cum reward: %.4e (n=%d)" % (cum_reward, n))
+                plt.imshow(next_state)
+                plt.show()
+                break
+
+        e_time = time.time() - s_time
+        logger.log(e, e_time, cum_reward, uniform_entropy, dist_to_uni_in_l_1)
+
+        if e % 20 == 0:
+            print("episode", e, " (out of %d)" % settings['n_episodes'])
+            print("cum_reward", cum_reward)
+        if e % 1_000 == 0:
+            elapsed_time = time.time() - s_time
+            estimated_time = settings['n_episodes'] * elapsed_time/(e+1)
+            print("Estimated time: %.2fs" % estimated_time)
+
+    logger.save()
+    image_and_angle_logger.save()
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--settings", type=str, required=True)

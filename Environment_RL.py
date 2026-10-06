@@ -130,6 +130,9 @@ class env():
             percentage=self.corruption_percentage,
         )
         self.state = iradon_sart(sinogram_n, theta=self.angles_seq) # re-constructed image
+
+        if self.a_start > self.num_angles:
+            print(la.norm(self.P_all[self.n].astype('float') - self.state, ord='fro'))
        
         self.reward = self._get_reward(sinogram_n)
 
@@ -188,6 +191,32 @@ class env():
             elif self.reward_type == RewardType.FWD_INCREMENTAL:
                 reward = current_reward - self.previous_reward
                 self.previous_reward = current_reward
+        elif self.reward_type in [
+                RewardType.FWD_RND_1, RewardType.FWD_RND_10, 
+                RewardType.FWD_RND_COMPLETE_10, RewardType.FWD_RND_COMPLETE_FULL,
+        ]:
+            if (self.reward_type in [
+                    RewardType.FWD_RND_COMPLETE_10, RewardType.FWD_RND_COMPLETE_FULL,
+            ]) and (self.a_start < self.num_angles):
+                # has not complete
+                return reward
+
+            # TODO: Use python pattern matching 
+            # https://stackoverflow.com/questions/11479816/what-is-the-python-equivalent-for-a-case-switch-statement
+            n_scans = 1 if self.reward_type == RewardType.FWD_RND_1 else 10
+            rnd_angles_seq = np.random.choice(self.angles, replace=False, size=n_scans)
+            if self.reward_type == RewardType.FWD_RND_COMPLETE_FULL:
+                rnd_angles_seq = self.angles
+
+            rnd_sinogram_n = forward_eval(
+                self.P_all[self.n].astype('float'), 
+                theta=rnd_angles_seq,
+                percentage=self.corruption_percentage,
+            )
+            bootstrap_image = radon(self.state, theta=rnd_angles_seq)
+            reconstruction_error = la.norm(rnd_sinogram_n - bootstrap_image, ord='fro')
+            reward = -reconstruction_error/la.norm(sinogram_n, ord='fro')
+
         else:
             raise Exception("Unknown reward_type %s" % self.reward_type)
 
