@@ -217,6 +217,11 @@ class env():
             reconstruction_error = la.norm(rnd_sinogram_n - bootstrap_image, ord='fro')
             reward = -reconstruction_error/la.norm(sinogram_n, ord='fro')
 
+            if self.reward_type in [
+                    RewardType.FWD_RND_COMPLETE_10, RewardType.FWD_RND_COMPLETE_FULL]:
+                # multiply by the number of scans for a fair comparison
+                reward *= self.num_angles
+
         else:
             raise Exception("Unknown reward_type %s" % self.reward_type)
 

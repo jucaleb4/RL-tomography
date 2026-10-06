@@ -21,7 +21,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od = get_parameter_settings(seed, False, ABOUT)
 
     od["seed"] = seed
-    od["n_episodes"] = 1_000
+    od["n_episodes"] = 10_000
     od["time_limit"] = time_limit
     od["n_angles"] = 24
     od["angle_in_degrees"] = True
@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     seed = 1029
-    time_limit = 1_800
+    time_limit = 3_600
 
     if args.setup:
         if args.mode == "test":
