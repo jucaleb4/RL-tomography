@@ -194,6 +194,7 @@ class env():
         elif self.reward_type in [
                 RewardType.FWD_RND_1, RewardType.FWD_RND_10, 
                 RewardType.FWD_RND_COMPLETE_10, RewardType.FWD_RND_COMPLETE_FULL,
+                RewardType.FWD_INC_RND_1, RewardType.FWD_INC_RND_10,
         ]:
             if (self.reward_type in [
                     RewardType.FWD_RND_COMPLETE_10, RewardType.FWD_RND_COMPLETE_FULL,
@@ -215,12 +216,21 @@ class env():
             )
             bootstrap_image = radon(self.state, theta=rnd_angles_seq)
             reconstruction_error = la.norm(rnd_sinogram_n - bootstrap_image, ord='fro')
-            reward = -reconstruction_error/la.norm(sinogram_n, ord='fro')
+            current_reward = -reconstruction_error/la.norm(sinogram_n, ord='fro')
 
+            # normalize rewards
             if self.reward_type in [
-                    RewardType.FWD_RND_COMPLETE_10, RewardType.FWD_RND_COMPLETE_FULL]:
+                    RewardType.FWD_RND_1, RewardType.FWD_RND_10, 
+            ]:
                 # multiply by the number of scans for a fair comparison
-                reward *= self.num_angles
+                reward = current_reward/float(self.num_angles)
+            elif self.reward_type in [
+                    RewardType.FWD_INC_RND_1, RewardType.FWD_INC_RND_10
+            ]:
+                reward = current_reward - self.previous_reward
+                self.previous_reward = current_reward
+            else:
+                reward = current_reward
 
         else:
             raise Exception("Unknown reward_type %s" % self.reward_type)

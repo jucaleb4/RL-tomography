@@ -158,21 +158,22 @@ def main(settings):
     else:
         actor_critic(env, settings)
 
-def get_loggers(env, settings):
+def get_loggers(env, settings, is_validation=False):
+    validation_addon = "validation_" if is_validation else ""
     logger = BasicLogger(
-        fname=os.path.join(settings["log_folder"], "seed=%d.csv" % settings['seed']), 
+        fname=os.path.join(settings["log_folder"], "%sseed=%d.csv" % (validation_addon, settings['seed'])), 
         keys=["episode", "time (sec)", "episodic reward", "entropy", "l_1"],
         dtypes=['d'] + ['f'] * 4
     ) 
     all_angles = env.angles
     angle_dist_logger = BasicLogger(
-        fname=os.path.join(settings["log_folder"], "final_angle_seed=%d.csv" % settings['seed']), 
+        fname=os.path.join(settings["log_folder"], "%sfinal_angle_seed=%d.csv" % (validation_addon, settings['seed'])), 
         keys=["%d" % i for i in range(len(all_angles))],
         dtypes=['f'] * len(all_angles)
     ) 
     angle_dist_logger.log(*all_angles)
     image_and_angle_logger = BasicLogger(
-        fname=os.path.join(settings["log_folder"], "img_angle_seed=%d.csv" % settings['seed']), 
+        fname=os.path.join(settings["log_folder"], "%simg_angle_seed=%d.csv" % (validation_addon, settings['seed'])), 
         keys=["image_id", "angle"],
         dtypes=['d', 'f'],
     ) 
@@ -228,7 +229,7 @@ def actor_critic(env, settings):
             # outputs from the environment after selecting an angles
             next_state, reward, done, _, c_r, n = env.step(action.item())
 
-            # log image_d and angle
+            # log image distribution, and image with actual angles selected angle
             image_and_angle_logger.log(n, env.angles[action.item()])
 
             # print("[%d] rwd=%.4e" % (t, reward))
@@ -260,8 +261,9 @@ def actor_critic(env, settings):
             
             if done:
                 break
-    
+
         e_time = time.time() - s_time
+        angle_dist_logger.log(*np.squeeze(angle_dist))
         logger.log(e, e_time, cum_reward, entropy.detach().numpy(), dist_to_uni_in_l_1)
         if e % 20 == 0:
             print("episode", e, " (out of %d)" % settings['n_episodes'])
@@ -272,9 +274,53 @@ def actor_critic(env, settings):
             print("Estimated time: %.2fs" % estimated_time)
 
     logger.save()
-    angle_dist_logger.log(*np.squeeze(angle_dist))
     angle_dist_logger.save()
+    image_and_angle_logger.save()
 
+    validate_policy(env, model, settings, n_validations=30)
+
+    # validate (with random 30 image with full scans)
+
+def validate_policy(env, model, settings, n_validations=30):
+    # use full complete to judge how good the scans are
+    env.reward_type = RewardType.FWD_RND_COMPLETE_FULL
+    logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings, is_validation=True)
+    s_time = time.time()
+
+    for e in range(n_validations):
+        # reset the environment and the action vector
+        state = env.reset()
+        state_a = np.array([[0]*settings['action_size']])
+    
+        # track the total rewards
+        cum_reward = 0
+        
+        t = 0
+        while True:
+            dist, value = model(state, state_a)
+            action = dist.sample()
+            log_prob = dist.log_prob(action)
+            entropy = dist.entropy().mean()
+            angle_dist = dist.probs.detach().cpu().numpy()
+            dist_to_uni_in_l_1 = np.sum(np.abs(angle_dist - 1./settings['action_size']))
+
+            next_state, reward, done, _, c_r, n = env.step(action.item())
+            image_and_angle_logger.log(n, env.angles[action.item()])
+
+            t += 1
+            state_a[0][action] = 1
+            cum_reward += reward
+            state = next_state
+            
+            if done:
+                break
+
+        e_time = time.time() - s_time
+        logger.log(e, e_time, cum_reward, entropy.detach().numpy(), dist_to_uni_in_l_1)
+        angle_dist_logger.log(*np.squeeze(angle_dist))
+
+    logger.save()
+    angle_dist_logger.save()
     image_and_angle_logger.save()
 
 def uniform_sampling(env, settings):

@@ -32,6 +32,8 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         RewardType.FWD_RND_10,
         RewardType.FWD_RND_COMPLETE_10,
         RewardType.FWD_RND_COMPLETE_FULL,
+        RewardType.FWD_INC_RND_1,
+        RewardType.FWD_INC_RND_10,
     ]
 
     log_folder_base = os.path.join("logs", DATE, "exp_%s" % EXP_ID)
