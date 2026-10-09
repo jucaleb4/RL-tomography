@@ -87,6 +87,10 @@ class env():
             self.P_all = gen.generate_triangle(n_samples=n_images, max_angle=0)
         elif image_type == ImageType.LINE:
             self.P_all = gen.generate_line(n_samples=n_images)
+        elif image_type == ImageType.LINE_THIRTY:
+            self.P_all = gen.generate_line(n_samples=n_images, max_angle=30)
+        elif image_type == ImageType.LINE_FIXED:
+            self.P_all = gen.generate_line(n_samples=n_images, max_angle=0)
         else:
             raise Exception("Unknown ImageType %s" % image_type)
 

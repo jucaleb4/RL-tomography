@@ -323,7 +323,8 @@ def validate_policy(env, model, settings, n_validations=30):
     angle_dist_logger.save()
     image_and_angle_logger.save()
 
-def uniform_sampling(env, settings):
+def uniform_sampling(env, settings, n_validations=30):
+    env.reward_type = RewardType.FWD_RND_COMPLETE_FULL
     logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
 
     tot_n_angles = len(env.angles)
@@ -332,16 +333,12 @@ def uniform_sampling(env, settings):
     rng = np.random.default_rng(settings['seed'])
 
     s_time = time.time()
-    for e in range(settings['n_episodes']):
+    for e in range(n_validations):
         # reset the environment and the action vector
         state = env.reset()
     
         # track the total rewards
         cum_reward = 0
-        
-        if time.time() - s_time > settings["time_limit"]:
-            print("Breaking early due to time limit")
-            break
 
         while True:
             # random sampling
@@ -356,14 +353,6 @@ def uniform_sampling(env, settings):
 
         e_time = time.time() - s_time
         logger.log(e, e_time, cum_reward, uniform_entropy, dist_to_uni_in_l_1)
-
-        if e % 20 == 0:
-            print("episode", e, " (out of %d)" % settings['n_episodes'])
-            print("cum_reward", cum_reward)
-        if e % 1_000 == 0:
-            elapsed_time = time.time() - s_time
-            estimated_time = settings['n_episodes'] * elapsed_time/(e+1)
-            print("Estimated time: %.2fs" % estimated_time)
 
     logger.save()
     image_and_angle_logger.save()

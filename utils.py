@@ -6,6 +6,8 @@ class ImageType(Enum):
     TRIANGLE_THIRTY = 2
     TRIANGLE_FIXED = 3
     LINE = 4
+    LINE_THIRTY = 5
+    LINE_FIXED = 6
 
 class RewardType(Enum):
     PNSR_E2E = 0
