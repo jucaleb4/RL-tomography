@@ -144,6 +144,7 @@ def main(settings):
         settings['image_size'], 
         settings['action_size'],
         settings['corruption_percentage'],
+        settings['pnsr_reg'],
         ImageType(settings['image_type']),
         RewardType(settings['reward_type']),
         settings["angle_in_degrees"], 

@@ -70,7 +70,7 @@ class env():
     
     def __init__(
         self, seed, n_images, num_angles, image_size, action_size,
-        corruption_percentage,
+        corruption_percentage, pnsr_reg,
         image_type = ImageType.MIXED, reward_type = RewardType.FWD_E2E,
         angle_in_degrees=False,
     ):
@@ -116,6 +116,7 @@ class env():
         self.init_start = 0
         self.first_step = True
         self.corruption_percentage = max(0, corruption_percentage)
+        self.pnsr_reg = pnsr_reg
  
     def step(self, action):
         
@@ -235,6 +236,24 @@ class env():
                 self.previous_reward = current_reward
             else:
                 reward = current_reward
+
+        elif self.reward_type == RewardType.FWD_RND_1_REG:
+            n_scans = 1 
+            rnd_angles_seq = np.random.choice(self.angles, replace=False, size=n_scans)
+
+            rnd_sinogram_n = forward_eval(
+                self.P_all[self.n].astype('float'), 
+                theta=rnd_angles_seq,
+                percentage=self.corruption_percentage,
+            )
+
+            bootstrap_image = radon(self.state, theta=rnd_angles_seq)
+            reconstruction_error = la.norm(rnd_sinogram_n - bootstrap_image, ord='fro')
+            reconstruction_reward = -reconstruction_error/la.norm(sinogram_n, ord='fro')
+
+            pnsr_reward = psnr(self.P_all[self.n], self.state)   
+
+            reward = reconstruction_reward + self.pnsr_reg*pnsr_reward
 
         else:
             raise Exception("Unknown reward_type %s" % self.reward_type)
