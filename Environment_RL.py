@@ -253,7 +253,6 @@ class env():
 
             pnsr_reward = psnr(self.P_all[self.n], self.state)   
 
-            import ipdb; ipdb.set_trace()
             reward = reconstruction_reward + self.pnsr_reg*pnsr_reward
             # normalize for a fair comparison
             reward /= float(self.num_angles)
