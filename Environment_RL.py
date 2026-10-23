@@ -177,7 +177,7 @@ class env():
     def _get_reward(self, sinogram_n):
         reward = 0
 
-        if self.reward_type in [RewardType.PNSR_E2E, RewardType.PNSR_INCREMENTAL]:
+        if self.reward_type in [RewardType.PNSR_E2E, RewardType.PNSR_INCREMENTAL, RewardType.PNSR_ADD]:
             current_reward = psnr(self.P_all[self.n], self.state)   
             if (self.reward_type == RewardType.PNSR_E2E) and (self.a_start > self.num_angles):
                 reward = current_reward
@@ -185,6 +185,8 @@ class env():
             elif self.reward_type == RewardType.PNSR_INCREMENTAL:
                 reward = current_reward - self.previous_reward
                 self.previous_reward = current_reward
+            elif self.reward_type == RewardType.PNSR_ADD:
+                reward = current_reward/float(self.num_angles)
         elif self.reward_type in [RewardType.FWD_E2E, RewardType.FWD_INCREMENTAL]:
             bootstrap_image = radon(self.state, theta=self.angles_seq)
             reconstruction_error = la.norm(sinogram_n - bootstrap_image, ord='fro')

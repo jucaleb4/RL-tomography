@@ -21,3 +21,4 @@ class RewardType(Enum):
     FWD_INC_RND_1 = 8
     FWD_INC_RND_10 = 9
     FWD_RND_1_REG = 10
+    PNSR_ADD = 11
