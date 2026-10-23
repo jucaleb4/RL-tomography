@@ -32,7 +32,9 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         ImageType.LINE_THIRTY, 
         ImageType.LINE_FIXED
     ]
-    reg_arr = [0.05, 0.5, 2.0]
+    # too big before
+    # reg_arr = [0.05, 0.5, 2.0]
+    reg_arr = [5e-4, 2e-2, 1e-1]
 
     log_folder_base = os.path.join("logs", DATE, "exp_%s" % EXP_ID)
     setting_folder_base = os.path.join("settings", DATE, "exp_%s" % EXP_ID)
