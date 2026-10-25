@@ -25,17 +25,21 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od["time_limit"] = time_limit
     od["n_angles"] = 24
     od["angle_in_degrees"] = True
-    od["reward_type"] = RewardType.FWD_RND_1.value
     od["n_images"] = 200
 
     od["scan_type"] = "ptycho"
     od["action_size"] = 256 # Claude's default choice: 64
 
     blind_arr = [True, False]
+    reward_type_arr = [
+        RewardType.FWD_RND_1,
+        RewardType.PNSR_INCREMENTAL,
+    ]
     image_type_arr = [
         ImageType.SKIMAGE,
     ]
-    penalty_arr = ["intensity", "amplitude", "poisson", "huber"]
+    # penalty_arr = ["intensity", "amplitude", "poisson", "huber"]
+    penalty_arr = ["amplitude", "poisson"]
     solve_iter_arr = [6,60]
 
     log_folder_base = os.path.join("logs", DATE, "exp_%s" % EXP_ID)
@@ -49,16 +53,17 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         print("Saving setting files to %s" % setting_folder_base)
 
     # https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-    exp_metadata = ["Exp id", "blind", "image_type", "penalty", "solve_iter"]
-    row_format ="{:>10}|{:>10}|{:>10}|{:>10}|{:>10}"
+    exp_metadata = ["Exp id", "blind", "rwd_type", "image_type", "penalty", "solve_iter"]
+    row_format ="{:>10}|{:>10}|{:>20}|{:>15}|{:>10}|{:>10}"
     if not skip_save:
         print("")
         print(row_format.format(*exp_metadata))
-        print("-" * (50+len(exp_metadata)-1))
+        print("-" * (75+len(exp_metadata)-1))
 
     ct = 0
-    for (blind, image_type, penalty, solve_iter) in itertools.product(blind_arr, image_type_arr, penalty_arr, solve_iter_arr):
+    for (blind, reward_type, image_type, penalty, solve_iter) in itertools.product(blind_arr, reward_type_arr, image_type_arr, penalty_arr, solve_iter_arr):
         od["blind"] = blind
+        od["reward_type"] = reward_type.value
         od["image_type"] = image_type.value
         od["penalty"] = penalty
         od["solve_iters"] = solve_iter
@@ -70,6 +75,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
             print(row_format.format(
                 ct, 
                 od["blind"],
+                reward_type.name, 
                 image_type.name, 
                 od["penalty"],
                 od["solve_iters"],
