@@ -59,6 +59,20 @@ try:
 except Exception:                                            # pragma: no cover
     PhantomGenerator = None
 
+# https://stackoverflow.com/questions/24825441/stop-scipy-minimize-after-set-time
+import warnings, time
+class TookTooLong(Warning):
+    pass
+
+class MinimizeStopper(object):
+    def __init__(self, max_sec=300):
+        self.max_sec = max_sec
+        self.start = time.time()
+    def __call__(self, xk=None):
+        elapsed = time.time() - self.start
+        if elapsed > self.max_sec:
+            warnings.warn("Terminating optimization: time limit reached",
+                          TookTooLong)
 
 # ======================================================================
 # 1. penalty functions c(a, b),  a = |F(w .* S_j z)|^2  (model intensity)
@@ -185,12 +199,13 @@ def solve_blind(d, pos, n, m, z0=None, w0=None, penalty="amplitude",
     # scipy's default ftol stops L-BFGS-B absurdly early on this objective
     opt = {"maxiter": maxiter}
     if method in ("L-BFGS-B", "TNC"):
-        opt.update(maxfun=10 * maxiter, ftol=1e-16, gtol=1e-14)
+        opt.update(maxfun=10 * maxiter, ftol=1e-6, gtol=1e-6)
     elif method in ("CG", "BFGS", "Newton-CG"):
-        opt["gtol"] = 1e-12
+        opt["gtol"] = 1e-6
     if options:
         opt.update(options)
 
+    callback=MinimizeStopper()
     res = minimize(objective, _pack(z0, w0), args=args, jac=True,
                    method=method, options=opt, callback=callback)
 

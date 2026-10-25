@@ -256,6 +256,10 @@ def actor_critic(env, settings):
   
         t = 0
         while True:
+            if time.time() - s_time > settings["time_limit"]:
+                print("Breaking early due to time limit")
+                break
+  
             # outputs from Actor-Critic model based on the current reconstruction
             dist, value = model(state, state_a)
             # Sample action from the output probability distribution

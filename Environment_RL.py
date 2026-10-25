@@ -160,7 +160,7 @@ class env():
         #self.n = 0
         
         # set a zero matrix as the first reconstruction or belief state
-        self.state = np.zeros((128,128))
+        self.state = np.zeros((self.image_size, self.image_size))
         # self.criteria = 0
         
         return self.state
