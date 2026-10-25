@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     seed = 1029
-    time_limit = 3_600 * 1.25 # allow 75m
+    time_limit = 3_600 
 
     if args.setup:
         if args.mode == "test":
