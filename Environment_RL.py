@@ -38,21 +38,9 @@ def forward_eval(image, theta, percentage=0.0):
     """
     sinogram = radon(image, theta=theta) # circle=False
     
-    # construct the OpTomo object
-    """ astra code
-    W = astra.OpTomo(proj_id)
-    sinogram = W * P
-    sinogram = sinogram.reshape([len(proj_angles), proj_size])
-    """ 
-    
     n = np.random.normal(0, np.std(sinogram), (len(sinogram), len(theta))) * percentage
     
-    # gauss1 = gauss.reshape(len(proj_angles), proj_size)
-    
     sinogram_n = sinogram + n
-    """ astra code <- not needed since we will not do reconstruction
-    rec_sirt = W.reconstruct('SIRT_CUDA', sinogram_n, iterations=n_iter_sirt, extraOptions={'MinConstraint':0.0,'MaxConstraint':1.0})
-    """
     
     return sinogram_n
 
@@ -71,7 +59,7 @@ class env():
     def __init__(
         self, seed, n_images, num_angles, image_size, action_size,
         corruption_percentage, pnsr_reg,
-        image_type = ImageType.MIXED, reward_type = RewardType.FWD_E2E,
+        image_type, reward_type,
         angle_in_degrees=False,
     ):
         # Generate your phantoms
@@ -117,6 +105,7 @@ class env():
         self.first_step = True
         self.corruption_percentage = max(0, corruption_percentage)
         self.pnsr_reg = pnsr_reg
+        self.img_channels = 1
  
     def step(self, action):
         
@@ -136,8 +125,8 @@ class env():
         )
         self.state = iradon_sart(sinogram_n, theta=self.angles_seq) # re-constructed image
 
-        if self.a_start > self.num_angles:
-            print(la.norm(self.P_all[self.n].astype('float') - self.state, ord='fro'))
+        # if self.a_start > self.num_angles:
+        #     print("Score:", la.norm(self.P_all[self.n].astype('float') - self.state, ord='fro'))
        
         self.reward = self._get_reward(sinogram_n)
 

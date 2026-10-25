@@ -27,6 +27,7 @@ def get_parameter_settings(seed, print_info, about):
         ("lr", 1e-4),
         ("wd", 1e-5), # weight decay
         ("delta", 1e-2),
+        ("scan_type", "ct"),
         ("image_size", 128), # TODO: remove this?
         ("action_size", 180), # TODO: remove this?
         ("image_type", ImageType.MIXED.value),
@@ -39,6 +40,17 @@ def get_parameter_settings(seed, print_info, about):
         ("uniform_sampling", False),
         ("fixed_image", False),
         ("image_id", 0),
+        ("probe_size", 16),
+        ("corruption_photons", None),
+        ("penalty", "amplitude"),
+        ("solver", "L-BFGS-B"),
+        ("solver_iters", 60),
+        ("periodic", True),
+        ("jitter", 1),
+        ("allow_repeats", False),
+        ("state_mode", "reim"),
+        ("warm_start", True),
+        ("blind", True),
     ])
 
     od_info = [
@@ -47,6 +59,9 @@ def get_parameter_settings(seed, print_info, about):
         ("n_seeds", "num seeds"), 
         ("n_iters", "num SPMD iters"),
         ("max_runtime_in_sec", "max runtime before SPMD early terminates (only for SPMD)"),
+        ("scan_type", "Scan type between (ct, ptycho) (Default: ct) (TODO: Make Enum)"),
+        ("image_size", "Generated image type (Default: 128)"), # TODO: remove this?
+        ("action_size", "Number of actions. Must be a square for Pytchography (Default: 180)"), # TODO: remove this?
         ("image_type", "Type of images to scan in tomography"),
         ("reward_type", "Type of reward (preferred FWD rewards)"),
         ("critic_loss_const", "Loss function contribution from critic"),
@@ -57,6 +72,17 @@ def get_parameter_settings(seed, print_info, about):
         ("uniform_sampling", "Select angles uniformally randomly (default:False)"),
         ("fixed_image", "Use same image for scanning (default:False)"),
         ("image_id", "Image to use for fixed_image scan"),
+        ("probe_size", "Probe size dimension (Default: 16)"),
+        ("corruption_photons", "TBD (Default: None)"),
+        ("penalty", "Ptychography penalty type (intensity, amplitude, poisson, huber) (TODO: Make Enum)"),
+        ("solver", "Scipy optimizer for solving blind pytchographic phase retrieval (TODO: Make Enum)"),
+        ("solver_iters", "Scipy optimizer num_iters"),
+        ("periodic", "Construct scanning windows periodically (Default: True)"),
+        ("jitter", "How much to 'jitter' the image to avoid degeneracy in blind (Default: 1)"),
+        ("allow_repeats", "Allow repeated scanning windows (Default: False)"),
+        ("state_mode", "How to represent state (amp - absolute value, ampphase - absolute and angle, reim - real and img components) (Default: reim) (TODO: Make Enum)"),
+        ("warm_start", "Warm-start blind pytchography with previous solution (Default: True)"),
+        ("blind", "Whether probe w is hidden (Default: True)"),
     ]
 
     if print_info:

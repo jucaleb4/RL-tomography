@@ -18,7 +18,7 @@ import os
 import time
 import yaml
 
-import Environment_RL 
+import Environment_RL, Environment_RL_Ptycho
 from logger import BasicLogger
 from utils import ImageType, RewardType
 # import subprocess
@@ -58,7 +58,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device: %s" % device)
 
 class ActorCritic(nn.Module):
-    def __init__(self, input_dim, hidden_dim, hidden_dim_1, output_dim, n_layers=2):
+    def __init__(self, input_dim, hidden_dim, hidden_dim_1, output_dim, n_layers=2, img_channels=1):
+        """
+        :param in_channels: channels in image (allows 2 if complex)
+        """
         super(ActorCritic, self).__init__()
         self.n_layers = n_layers
         self.hidden_dim = hidden_dim
@@ -66,7 +69,7 @@ class ActorCritic(nn.Module):
 
         to_pad = int((3 - 1) / 2)
         self.conv1 = nn.Sequential(
-                nn.Conv2d(in_channels=1, 
+                nn.Conv2d(in_channels=img_channels, 
                           out_channels=12, 
                           kernel_size=3,
                           padding=to_pad,
@@ -97,7 +100,7 @@ class ActorCritic(nn.Module):
                 nn.MaxPool2d(kernel_size=4))             
         
         # Dynamically determine conv output size
-        self.conv_output_dim = self._get_conv_output_dim(input_shape=(1, input_dim, input_dim))
+        self.conv_output_dim = self._get_conv_output_dim(input_shape=(img_channels, input_dim, input_dim))
                 
         
         self.actor = nn.Sequential(
@@ -118,8 +121,10 @@ class ActorCritic(nn.Module):
     
     def forward(self,state, state_a):
         state = torch.from_numpy(state).float().squeeze().to(device)
-        state = state.unsqueeze(0)
-        state = state.unsqueeze(0)
+        EXPECTED_CONV_SHAPE = 4 # (batch, channel, W, H)
+        # extends image until meets expected conv shape
+        while len(state.shape) < EXPECTED_CONV_SHAPE:
+            state = state.unsqueeze(0)
         state_a = torch.from_numpy(state_a).float().to(device)
         p2 = self.conv1(state)
         
@@ -137,18 +142,43 @@ def main(settings):
     # setup environment
     print("Setting up environment")
     s_time = time.time()
-    env = Environment_RL.env(
-        settings['seed'], 
-        settings['n_images'], 
-        settings['n_angles'], 
-        settings['image_size'], 
-        settings['action_size'],
-        settings['corruption_percentage'],
-        settings['pnsr_reg'],
-        ImageType(settings['image_type']),
-        RewardType(settings['reward_type']),
-        settings["angle_in_degrees"], 
-    )
+    if settings["scan_type"] == "ct":
+        env = Environment_RL.env(
+            settings['seed'], 
+            settings['n_images'], 
+            settings['n_angles'], 
+            settings['image_size'], 
+            settings['action_size'],
+            settings['corruption_percentage'],
+            settings['pnsr_reg'],
+            ImageType(settings['image_type']),
+            RewardType(settings['reward_type']),
+            settings["angle_in_degrees"], 
+        )
+    elif settings["scan_type"] == "ptycho":
+        env = Environment_RL_Ptycho.env(
+            settings['seed'], 
+            settings['n_images'], 
+            settings['n_angles'], # same as number of scans
+            settings['image_size'], 
+            settings['action_size'],
+            settings['probe_size'],
+            settings['corruption_photons'],
+            settings['pnsr_reg'],
+            ImageType(settings['image_type']),
+            RewardType(settings['reward_type']),
+            settings["penalty"],
+            settings["solver"],
+            settings["solver_iters"],
+            settings["periodic"],
+            settings["jitter"],
+            settings["allow_repeats"],
+            settings["state_mode"], 
+            settings["warm_start"], 
+            settings["blind"], 
+        )
+    else:
+        raise Exception("Unknown scan_type=%s" % settings["scan_type"])
 
     print("Done... (%.2fs)" % (time.time() - s_time))
 
@@ -181,8 +211,23 @@ def get_loggers(env, settings, is_validation=False):
 
     return logger, angle_dist_logger, image_and_angle_logger
 
+def get_basic_logger(env, settings, is_validation=False):
+    validation_addon = "validation_" if is_validation else ""
+    logger = BasicLogger(
+        fname=os.path.join(settings["log_folder"], "%sseed=%d.csv" % (validation_addon, settings['seed'])), 
+        keys=["episode", "time (sec)", "episodic reward", "entropy", "l_1"],
+        dtypes=['d'] + ['f'] * 4
+    ) 
+
+    return logger
+
 def actor_critic(env, settings):
-    logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
+    # TODO: Have better way to handle these loggers (also update @validate_policy)
+    if settings["scan_type"] == "ct":
+        logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
+    else:
+        logger = get_basic_logger(env, settings)
+        angle_dist_logger = image_and_angle_logger = None
 
     # set parameters for network
     print("Setting up neural network")
@@ -193,7 +238,8 @@ def actor_critic(env, settings):
     OUTPUT_DIM = settings['action_size']
     HIDDEN_DIM_1 = settings['action_size']
 
-    model = ActorCritic(INPUT_DIM, HIDDEN_DIM, HIDDEN_DIM_1, OUTPUT_DIM).to(device)
+    img_channels = env.img_channels # complex images will have 2 channels
+    model = ActorCritic(INPUT_DIM, HIDDEN_DIM, HIDDEN_DIM_1, OUTPUT_DIM, img_channels=img_channels).to(device)
     optimizer = optim.Adam(model.parameters(), lr=settings['lr'], weight_decay=settings['wd'])
     print("Done... (%.2fs)" % (time.time() - s_time))
 
@@ -231,7 +277,8 @@ def actor_critic(env, settings):
             next_state, reward, done, _, c_r, n = env.step(action.item())
 
             # log image distribution, and image with actual angles selected angle
-            image_and_angle_logger.log(n, env.angles[action.item()])
+            if image_and_angle_logger:
+                image_and_angle_logger.log(n, env.angles[action.item()])
 
             # print("[%d] rwd=%.4e" % (t, reward))
             t += 1
@@ -264,7 +311,8 @@ def actor_critic(env, settings):
                 break
 
         e_time = time.time() - s_time
-        angle_dist_logger.log(*np.squeeze(angle_dist))
+        if angle_dist_logger:
+            angle_dist_logger.log(*np.squeeze(angle_dist))
         logger.log(e, e_time, cum_reward, entropy.detach().numpy(), dist_to_uni_in_l_1)
         if e % 20 == 0:
             print("episode", e, " (out of %d)" % settings['n_episodes'])
@@ -275,8 +323,9 @@ def actor_critic(env, settings):
             print("Estimated time: %.2fs" % estimated_time)
 
     logger.save()
-    angle_dist_logger.save()
-    image_and_angle_logger.save()
+    if angle_dist_logger:
+        angle_dist_logger.save()
+        image_and_angle_logger.save()
 
     validate_policy(env, model, settings, n_validations=30)
 
@@ -285,7 +334,11 @@ def actor_critic(env, settings):
 def validate_policy(env, model, settings, n_validations=30):
     # use full complete to judge how good the scans are
     env.reward_type = RewardType.FWD_RND_COMPLETE_FULL
-    logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings, is_validation=True)
+    if settings["scan_type"] == "ct":
+        logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings, is_validation=True)
+    else:
+        logger = get_basic_logger(env, settings, is_validation=True)
+        angle_dist_logger = image_and_angle_logger = None
     s_time = time.time()
 
     for e in range(n_validations):
@@ -306,7 +359,8 @@ def validate_policy(env, model, settings, n_validations=30):
             dist_to_uni_in_l_1 = np.sum(np.abs(angle_dist - 1./settings['action_size']))
 
             next_state, reward, done, _, c_r, n = env.step(action.item())
-            image_and_angle_logger.log(n, env.angles[action.item()])
+            if image_and_angle_logger:
+                image_and_angle_logger.log(n, env.angles[action.item()])
 
             t += 1
             state_a[0][action] = 1
@@ -318,15 +372,21 @@ def validate_policy(env, model, settings, n_validations=30):
 
         e_time = time.time() - s_time
         logger.log(e, e_time, cum_reward, entropy.detach().numpy(), dist_to_uni_in_l_1)
-        angle_dist_logger.log(*np.squeeze(angle_dist))
+        if angle_dist_logger:
+            angle_dist_logger.log(*np.squeeze(angle_dist))
 
     logger.save()
-    angle_dist_logger.save()
-    image_and_angle_logger.save()
+    if angle_dist_logger:
+        angle_dist_logger.save()
+        image_and_angle_logger.save()
 
 def uniform_sampling(env, settings, n_validations=30):
     env.reward_type = RewardType.FWD_RND_COMPLETE_FULL
-    logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
+    if settings["scan_type"] == "ct":
+        logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
+    else:
+        logger = get_basic_logger(env, settings, is_validation=True)
+        angle_dist_logger = image_and_angle_logger = None
 
     tot_n_angles = len(env.angles)
     dist_to_uni_in_l_1 = 0
@@ -345,7 +405,8 @@ def uniform_sampling(env, settings, n_validations=30):
             # random sampling
             a_t = rng.choice(tot_n_angles)
             next_state, reward, done, _, c_r, n = env.step(a_t)
-            image_and_angle_logger.log(n, env.angles[a_t])
+            if image_and_angle_logger:
+                image_and_angle_logger.log(n, env.angles[a_t])
 
             cum_reward += reward
 
@@ -356,7 +417,8 @@ def uniform_sampling(env, settings, n_validations=30):
         logger.log(e, e_time, cum_reward, uniform_entropy, dist_to_uni_in_l_1)
 
     logger.save()
-    image_and_angle_logger.save()
+    if image_and_angle_logger:
+        image_and_angle_logger.save()
 
 def fixed_image_scan(env, settings):
     logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
