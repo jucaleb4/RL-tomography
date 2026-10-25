@@ -28,7 +28,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od["reward_type"] = RewardType.FWD_RND_1.value
 
     od["scan_type"] = "ptycho"
-    od["action_size"] = 64 # Claude's default choice
+    od["action_size"] = 256 # Claude's default choice: 64
 
     image_type_arr = [
         ImageType.LINE, 
