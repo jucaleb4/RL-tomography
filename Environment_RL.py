@@ -79,6 +79,8 @@ class env():
             self.P_all = gen.generate_line(n_samples=n_images, max_angle=30)
         elif image_type == ImageType.LINE_FIXED:
             self.P_all = gen.generate_line(n_samples=n_images, max_angle=0)
+        elif image_type == ImageType.SKIMAGE:
+            self.P_all = gen.generate_skimage(n_samples=n_images)
         else:
             raise Exception("Unknown ImageType %s" % image_type)
 

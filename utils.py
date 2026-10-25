@@ -8,6 +8,7 @@ class ImageType(Enum):
     LINE = 4
     LINE_THIRTY = 5
     LINE_FIXED = 6
+    SKIMAGE = 7
 
 class RewardType(Enum):
     PNSR_E2E = 0

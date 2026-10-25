@@ -26,6 +26,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od["n_angles"] = 24
     od["angle_in_degrees"] = True
     od["reward_type"] = RewardType.FWD_RND_1.value
+    od["n_images"] = 64
 
     od["scan_type"] = "ptycho"
     od["action_size"] = 256 # Claude's default choice: 64
@@ -106,7 +107,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     seed = 1029
-    time_limit = 3_600
+    time_limit = 3_600 * 1.25 # allow 75m
 
     if args.setup:
         if args.mode == "test":

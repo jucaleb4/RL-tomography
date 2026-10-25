@@ -10,12 +10,19 @@ import random
 from scipy import ndimage
 import torch
 
+import skimage
+from skimage.color import rgb2gray
+from skimage.transform import resize
+from skimage.transform import SimilarityTransform, warp
 
 class PhantomGenerator:
     def __init__(self, seed, image_size):
         self.seed = seed
         self.image_size = image_size
         self._seed_all()
+
+    # TODO: amoritze cost in future
+    # def __getitem__(self, key: int):
 
     def _seed_all(self):
         random.seed(self.seed)
@@ -373,5 +380,55 @@ class PhantomGenerator:
             ph[ph < 0.01] = 0
 
             P_all.append(ph)
+
+        return P_all
+
+    def generate_skimage(self, n_samples=1000):
+        """
+        ref: https://scikit-image.org/docs/stable/api/skimage.data.html
+        """
+        def random_rotate_fill(img, degrees):
+            """
+            :param degrees: rotation in degrees
+            """
+            theta = degrees * (np.pi/180) # convert to radians
+            h, w = img.shape[:2]
+            s = abs(np.cos(theta)) + abs(np.sin(theta))   # zoom needed to kill the corners
+            c = np.array([w, h]) / 2 - 0.5                # center in (x, y), pixel-center convention
+
+            tf = (SimilarityTransform(translation=-c)
+                + SimilarityTransform(rotation=theta, scale=s)
+                + SimilarityTransform(translation=c))
+
+            return warp(img.astype('float'), tf.inverse, order=1, mode='edge', preserve_range=False)
+
+        images = (
+            'astronaut', 'binary_blobs', 'brick', 'colorwheel', 'camera', 'cat',
+            'checkerboard', 'clock', 'coffee', 'coins', 'grass', 'gravel', 'horse',
+            'page', 'text', 'rocket',
+        )
+        SIZE = 256
+        P_all = []
+
+        # ensure enough random samples
+        n_samples = max(n_samples, len(images)+2)
+        # create random partition for image selection (within each partition, randomly rotated)
+        img_partitions = np.random.choice(np.arange(1, n_samples), size=len(images)-1, replace=False)
+        img_partitions = np.append(np.append(0, img_partitions), n_samples)
+        for i in range(len(images)):
+            # get image
+            caller = getattr(skimage.data, images[i])
+            image = caller()
+            # grayscale
+            if image.ndim == 3:
+                image = rgb2gray(image)
+            image = resize(image, (SIZE, SIZE), anti_aliasing=False)
+
+            i_start = img_partitions[i]
+            i_end = img_partitions[i+1]
+            for _ in range(i_start, i_end):
+                # randomly rotate
+                rnd_theta = np.random.uniform(0, 180)
+                P_all.append(random_rotate_fill(image, rnd_theta))
 
         return P_all
