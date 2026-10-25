@@ -196,20 +196,20 @@ def get_loggers(env, settings, is_validation=False):
         keys=["episode", "time (sec)", "episodic reward", "entropy", "l_1"],
         dtypes=['d'] + ['f'] * 4
     ) 
-    all_angles = env.angles
-    angle_dist_logger = BasicLogger(
-        fname=os.path.join(settings["log_folder"], "%sfinal_angle_seed=%d.csv" % (validation_addon, settings['seed'])), 
-        keys=["%d" % i for i in range(len(all_angles))],
-        dtypes=['f'] * len(all_angles)
-    ) 
-    angle_dist_logger.log(*all_angles)
-    image_and_angle_logger = BasicLogger(
-        fname=os.path.join(settings["log_folder"], "%simg_angle_seed=%d.csv" % (validation_addon, settings['seed'])), 
-        keys=["image_id", "angle"],
-        dtypes=['d', 'f'],
+    # all_angles = env.angles
+    # angle_dist_logger = BasicLogger(
+    #     fname=os.path.join(settings["log_folder"], "%sfinal_angle_seed=%d.csv" % (validation_addon, settings['seed'])), 
+    #     keys=["%d" % i for i in range(len(all_angles))],
+    #     dtypes=['f'] * len(all_angles)
+    # ) 
+    # angle_dist_logger.log(*all_angles)
+    image_and_action_logger = BasicLogger(
+        fname=os.path.join(settings["log_folder"], "%simg_action_seed=%d.csv" % (validation_addon, settings['seed'])), 
+        keys=["image_id", "action"],
+        dtypes=['d', 'd'],
     ) 
 
-    return logger, angle_dist_logger, image_and_angle_logger
+    return logger, image_and_action_logger
 
 def get_basic_logger(env, settings, is_validation=False):
     validation_addon = "validation_" if is_validation else ""
@@ -222,12 +222,7 @@ def get_basic_logger(env, settings, is_validation=False):
     return logger
 
 def actor_critic(env, settings):
-    # TODO: Have better way to handle these loggers (also update @validate_policy)
-    if settings["scan_type"] == "ct":
-        logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
-    else:
-        logger = get_basic_logger(env, settings)
-        angle_dist_logger = image_and_angle_logger = None
+    logger, _ = get_loggers(env, settings)
 
     # set parameters for network
     print("Setting up neural network")
@@ -276,10 +271,6 @@ def actor_critic(env, settings):
             # outputs from the environment after selecting an angles
             next_state, reward, done, _, c_r, n = env.step(action.item())
 
-            # log image distribution, and image with actual angles selected angle
-            if image_and_angle_logger:
-                image_and_angle_logger.log(n, env.angles[action.item()])
-
             # print("[%d] rwd=%.4e" % (t, reward))
             t += 1
         
@@ -311,8 +302,6 @@ def actor_critic(env, settings):
                 break
 
         e_time = time.time() - s_time
-        if angle_dist_logger:
-            angle_dist_logger.log(*np.squeeze(angle_dist))
         logger.log(e, e_time, cum_reward, entropy.detach().numpy(), dist_to_uni_in_l_1)
         if e % 20 == 0:
             print("episode", e, " (out of %d)" % settings['n_episodes'])
@@ -323,9 +312,6 @@ def actor_critic(env, settings):
             print("Estimated time: %.2fs" % estimated_time)
 
     logger.save()
-    if angle_dist_logger:
-        angle_dist_logger.save()
-        image_and_angle_logger.save()
 
     validate_policy(env, model, settings, n_validations=30)
 
@@ -334,11 +320,7 @@ def actor_critic(env, settings):
 def validate_policy(env, model, settings, n_validations=30):
     # use full complete to judge how good the scans are
     env.reward_type = RewardType.FWD_RND_COMPLETE_FULL
-    if settings["scan_type"] == "ct":
-        logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings, is_validation=True)
-    else:
-        logger = get_basic_logger(env, settings, is_validation=True)
-        angle_dist_logger = image_and_angle_logger = None
+    logger, image_and_action_logger = get_loggers(env, settings, is_validation=True)
     s_time = time.time()
 
     for e in range(n_validations):
@@ -359,8 +341,7 @@ def validate_policy(env, model, settings, n_validations=30):
             dist_to_uni_in_l_1 = np.sum(np.abs(angle_dist - 1./settings['action_size']))
 
             next_state, reward, done, _, c_r, n = env.step(action.item())
-            if image_and_angle_logger:
-                image_and_angle_logger.log(n, env.angles[action.item()])
+            image_and_action_logger.log(n, action.item())
 
             t += 1
             state_a[0][action] = 1
@@ -372,21 +353,12 @@ def validate_policy(env, model, settings, n_validations=30):
 
         e_time = time.time() - s_time
         logger.log(e, e_time, cum_reward, entropy.detach().numpy(), dist_to_uni_in_l_1)
-        if angle_dist_logger:
-            angle_dist_logger.log(*np.squeeze(angle_dist))
 
     logger.save()
-    if angle_dist_logger:
-        angle_dist_logger.save()
-        image_and_angle_logger.save()
+    image_and_action_logger.save()
 
 def uniform_sampling(env, settings, n_validations=30):
-    env.reward_type = RewardType.FWD_RND_COMPLETE_FULL
-    if settings["scan_type"] == "ct":
-        logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
-    else:
-        logger = get_basic_logger(env, settings, is_validation=True)
-        angle_dist_logger = image_and_angle_logger = None
+    logger, image_and_action_logger = get_loggers(env, settings)
 
     tot_n_angles = len(env.angles)
     dist_to_uni_in_l_1 = 0
@@ -405,8 +377,7 @@ def uniform_sampling(env, settings, n_validations=30):
             # random sampling
             a_t = rng.choice(tot_n_angles)
             next_state, reward, done, _, c_r, n = env.step(a_t)
-            if image_and_angle_logger:
-                image_and_angle_logger.log(n, env.angles[a_t])
+            image_and_action_logger.log(n, a_t)
 
             cum_reward += reward
 
@@ -417,8 +388,7 @@ def uniform_sampling(env, settings, n_validations=30):
         logger.log(e, e_time, cum_reward, uniform_entropy, dist_to_uni_in_l_1)
 
     logger.save()
-    if image_and_angle_logger:
-        image_and_angle_logger.save()
+    image_and_action_logger.save()
 
 def fixed_image_scan(env, settings):
     logger, angle_dist_logger, image_and_angle_logger = get_loggers(env, settings)
