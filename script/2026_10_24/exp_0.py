@@ -15,7 +15,7 @@ from utils import ImageType, RewardType
 
 DATE =  os.path.dirname(__file__).split("/")[-1] # "2025_12_24"
 EXP_ID = int(re.search(r'\d+', os.path.splitext(os.path.basename(__file__))[0]).group()) # 0
-ABOUT = "RL for Seq DOE Pytchography over lines"
+ABOUT = "RL for Seq DOE Pytchography over mixed shapes"
 
 def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od = get_parameter_settings(seed, False, ABOUT)
@@ -33,8 +33,8 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     blind_arr = [True, False]
     image_type_arr = [
         ImageType.LINE, 
-        ImageType.LINE_THIRTY, 
-        ImageType.LINE_FIXED
+        ImageType.TRIANGLE,
+        ImageType.MIXED,
     ]
     penalty_arr = ["intensity", "amplitude", "poisson", "huber"]
     solve_iter_arr = [6,60]
