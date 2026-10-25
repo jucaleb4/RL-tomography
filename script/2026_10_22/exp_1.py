@@ -15,7 +15,7 @@ from utils import ImageType, RewardType
 
 DATE =  os.path.dirname(__file__).split("/")[-1] # "2025_12_24"
 EXP_ID = int(re.search(r'\d+', os.path.splitext(os.path.basename(__file__))[0]).group()) # 0
-ABOUT = "RL for Seq DOE over lines (limited) with PNSR as regularization"
+ABOUT = "RL for Seq DOE over lines mixed shapes with PNSR regularization"
 
 def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od = get_parameter_settings(seed, False, ABOUT)
