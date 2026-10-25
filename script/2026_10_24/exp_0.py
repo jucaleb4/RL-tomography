@@ -32,8 +32,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
 
     blind_arr = [True, False]
     image_type_arr = [
-        ImageType.LINE, 
-        ImageType.TRIANGLE,
+        ImageType.LINE_FIXED, 
         ImageType.MIXED,
     ]
     penalty_arr = ["intensity", "amplitude", "poisson", "huber"]
