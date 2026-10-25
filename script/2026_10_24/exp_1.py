@@ -30,6 +30,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
     od["scan_type"] = "ptycho"
     od["action_size"] = 256 # Claude's default choice: 64
 
+    blind_arr = [True, False]
     image_type_arr = [
         ImageType.MIXED,
         ImageType.TRIANGLE,
@@ -50,15 +51,16 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         print("Saving setting files to %s" % setting_folder_base)
 
     # https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-    exp_metadata = ["Exp id", "image_type", "penalty", "solve_iter"]
-    row_format ="{:>10}|{:>15}|{:>10}|{:>10}"
+    exp_metadata = ["Exp id", "blind", "image_type", "penalty", "solve_iter"]
+    row_format ="{:>10}|{:>10}|{:>15}|{:>10}|{:>10}"
     if not skip_save:
         print("")
         print(row_format.format(*exp_metadata))
-        print("-" * (45+len(exp_metadata)-1))
+        print("-" * (55+len(exp_metadata)-1))
 
     ct = 0
-    for (image_type, penalty, solve_iter) in itertools.product(image_type_arr, penalty_arr, solve_iter_arr):
+    for (blind, image_type, penalty, solve_iter) in itertools.product(blind_arr, image_type_arr, penalty_arr, solve_iter_arr):
+        od["blind"] = blind
         od["image_type"] = image_type.value
         od["penalty"] = penalty
         od["solve_iters"] = solve_iter
@@ -69,6 +71,7 @@ def setup_setting_files(seed, time_limit, print_info, skip_save=False):
         if not skip_save:
             print(row_format.format(
                 ct, 
+                od["blind"],
                 image_type.name, 
                 od["penalty"],
                 od["solve_iters"],
